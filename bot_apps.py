@@ -1,13 +1,12 @@
 import os
 import logging
 from flask import Flask
-from telegram import Update, WebAppInfo, ReplyKeyboardMarkup
+from telegram import Update, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # --- Налаштування ---
-# Токен будемо брати зі змінних середовища на сервері
+# Токен і URL беремо зі змінних середовища на сервері
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-# URL нашого сервісу на Render (додамо його пізніше)
 WEB_APP_URL = os.environ.get("WEB_APP_URL")
 
 logging.basicConfig(
@@ -23,12 +22,17 @@ app = Flask(__name__, static_folder='frontend', static_url_path='')
 # --- Telegram частина ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Надсилає кнопку для запуску Web App."""
-    # Створюємо кнопку, яка відкриє наш міні-сайт
-    keyboard = [
-        [{"text": "📈 Відкрити інтерактивний графік", "web_app": WebAppInfo(url=WEB_APP_URL)}]
-    ]
-    # Створюємо клавіатуру
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    # Правильно створюємо об'єкт кнопки, як того вимагає бібліотека
+    button = KeyboardButton(
+        "📈 Відкрити інтерактивний графік",
+        web_app=WebAppInfo(url=WEB_APP_URL)
+    )
+
+    # Створюємо клавіатуру з одного ряду, що містить нашу кнопку
+    keyboard = [[button]]
+
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)Я ---
 
     await update.message.reply_text(
         "Привіт! Натисніть кнопку нижче, щоб відкрити інтерактивний графік криптовалют.",
@@ -50,6 +54,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # Цей блок не буде виконуватися на Render, але потрібен для локальних тестів.
-    # На Render ми будемо запускати Gunicorn, який керуватиме Flask `app`.
     main()
