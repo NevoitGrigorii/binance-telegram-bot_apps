@@ -58,12 +58,19 @@ async def main():
     )
     server = uvicorn.Server(config)
 
-    await ptb_app.initialize()
-    await ptb_app.start()
-    await ptb_app.updater.start_polling()
+    # Запускаємо бота як окремий таск
+    bot_task = asyncio.create_task(ptb_app.run_polling())
+
+    # Запускаємо Flask-сервер
     await server.serve()
-    await ptb_app.updater.stop()
-    await ptb_app.stop()
+
+    # Якщо сервер зупинився — зупиняємо і бота
+    bot_task.cancel()
+    try:
+        await bot_task
+    except asyncio.CancelledError:
+        pass
+
 
 
 if __name__ == "__main__":
