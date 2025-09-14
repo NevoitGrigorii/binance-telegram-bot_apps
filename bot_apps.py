@@ -3,9 +3,9 @@ import logging
 from flask import Flask
 from telegram import Update, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes
+from threading import Thread
 
 # --- Налаштування ---
-# Токен і URL беремо зі змінних середовища на сервері
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 WEB_APP_URL = os.environ.get("WEB_APP_URL")
 
@@ -14,27 +14,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# --- Flask частина для віддачі нашого міні-сайту ---
-# `static_folder` вказує, що файли (index.html, etc.) лежать у папці 'frontend'
-app = Flask(__name__, static_folder='frontend', static_url_path='')
 
-
-# --- Telegram частина ---
+# --- Функції Telegram-бота ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Надсилає кнопку для запуску Web App."""
-
-    # --- ОСНОВНЕ ВИПРАВЛЕННЯ ТУТ ---
-    # Правильно створюємо об'єкт кнопки, як того вимагає бібліотека
     button = KeyboardButton(
         "📈 Відкрити інтерактивний графік",
         web_app=WebAppInfo(url=WEB_APP_URL)
     )
-
-    # Створюємо клавіатуру з одного ряду, що містить нашу кнопку
     keyboard = [[button]]
-
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    # --- КІНЕЦЬ ВИПРАВЛЕННЯ ---
 
     await update.message.reply_text(
         "Привіт! Натисніть кнопку нижче, щоб відкрити інтерактивний графік криптовалют.",
@@ -42,18 +31,35 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-def main() -> None:
-    """Основна функція запуску."""
+def run_bot():
+    """Запускає polling-режим бота."""
     if not TELEGRAM_TOKEN or not WEB_APP_URL:
-        logger.error("TELEGRAM_TOKEN та WEB_APP_URL мають бути встановлені як змінні середовища!")
+        logger.error("TELEGRAM_TOKEN та WEB_APP_URL мають бути встановлені!")
         return
 
     application = Application.builder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
 
-    logger.info("Бот запускається...")
+    logger.info("Бот запускається в режимі polling...")
     application.run_polling()
 
 
+# --- Flask частина для віддачі фронтенду та запуску бота ---
+app = Flask(__name__, static_folder='frontend', static_url_path='')
+
+
+@app.route('/')
+def home():
+    """Головна сторінка, яку буде перевіряти UptimeRobot."""
+    return "Bot is alive and running!"
+
+
 if __name__ == "__main__":
-    main()
+    # Запускаємо бота в окремому потоці, щоб він не блокував веб-сервер
+    bot_thread = Thread(target=run_bot)
+    bot_thread.start()
+
+    # Запускаємо веб-сервер, який буде бачити Render
+    # Gunicorn буде використовувати об'єкт 'app' з цього файлу
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
