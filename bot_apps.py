@@ -30,7 +30,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=reply_markup
     )
 
-
 def run_bot():
     """Запускає polling-режим бота."""
     if not TELEGRAM_TOKEN or not WEB_APP_URL:
@@ -44,19 +43,15 @@ def run_bot():
     application.run_polling()
 
 
-# --- Flask частина для віддачі фронтенду та запуску бота ---
+# --- Flask частина для віддачі фронтенду ---
 app = Flask(__name__, static_folder='frontend', static_url_path='')
 
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
 
-if __name__ == "__main__":
-    # Запускаємо бота в окремому потоці, щоб він не блокував веб-сервер
-    bot_thread = Thread(target=run_bot)
-    bot_thread.start()
-
-    # Запускаємо веб-сервер, який буде бачити Render
-    # Gunicorn буде використовувати об'єкт 'app' з цього файлу
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+# --- ЗАПУСК БОТА ПРИ ІМПОРТІ ФАЙЛУ ---
+# Цей код виконається, коли Gunicorn завантажить файл,п і запустить бота у фоновому потоці.
+logger.info("Запускаємо потік для Telegram-бота...")
+bot_thread = Thread(target=run_bot)
+bot_thread.start()
