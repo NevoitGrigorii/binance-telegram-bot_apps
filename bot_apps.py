@@ -47,6 +47,10 @@ def run_bot():
 # --- Flask частина для віддачі фронтенду та запуску бота ---
 app = Flask(__name__, static_folder='frontend', static_url_path='')
 
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
+
 if __name__ == "__main__":
     # Запускаємо бота в окремому потоці, щоб він не блокував веб-сервер
     bot_thread = Thread(target=run_bot)
