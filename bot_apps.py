@@ -1,10 +1,10 @@
 import os
 import logging
 import asyncio
+import uvicorn
 from flask import Flask
 from telegram import Update, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes
-import uvicorn
 
 # --- Налаштування ---
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -48,12 +48,8 @@ async def main():
     """Запускає веб-сервер Uvicorn та Telegram-бота разом."""
     port = int(os.environ.get('PORT', 8080))
 
-    # Створюємо та налаштовуємо Uvicorn-сервер
     config = uvicorn.Config(
-        "__main__:flask_app",
-        host="0.0.0.0",
-        port=port,
-        log_level="info"
+        "__main__:flask_app", host="0.0.0.0", port=port, log_level="info"
     )
     server = uvicorn.Server(config)
 
@@ -67,5 +63,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    # Запускаємо головну async-функцію
     asyncio.run(main())
