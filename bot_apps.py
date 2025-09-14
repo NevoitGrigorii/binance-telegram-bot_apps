@@ -1,9 +1,10 @@
 import os
 import logging
+import asyncio
 from flask import Flask
 from telegram import Update, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes
-from threading import Thread
+import uvicorn
 
 # --- Налаштування ---
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -17,41 +18,54 @@ logger = logging.getLogger(__name__)
 
 # --- Функції Telegram-бота ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Надсилає кнопку для запуску Web App."""
-    button = KeyboardButton(
-        "📈 Відкрити інтерактивний графік",
-        web_app=WebAppInfo(url=WEB_APP_URL)
-    )
+    button = KeyboardButton("📈 Відкрити інтерактивний графік", web_app=WebAppInfo(url=WEB_APP_URL))
     keyboard = [[button]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-
     await update.message.reply_text(
         "Привіт! Натисніть кнопку нижче, щоб відкрити інтерактивний графік криптовалют.",
         reply_markup=reply_markup
     )
 
-def run_bot():
-    """Запускає polling-режим бота."""
-    if not TELEGRAM_TOKEN or not WEB_APP_URL:
-        logger.error("TELEGRAM_TOKEN та WEB_APP_URL мають бути встановлені!")
-        return
 
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
+# --- Налаштування Telegram Application ---
+if not TELEGRAM_TOKEN or not WEB_APP_URL:
+    raise ValueError("TELEGRAM_TOKEN та WEB_APP_URL мають бути встановлені!")
 
-    logger.info("Бот запускається в режимі polling...")
-    application.run_polling()
-
+ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
+ptb_app.add_handler(CommandHandler("start", start))
 
 # --- Flask частина для віддачі фронтенду ---
-app = Flask(__name__, static_folder='frontend', static_url_path='')
+flask_app = Flask(__name__, static_folder='frontend', static_url_path='')
 
-@app.route('/')
+
+@flask_app.route('/')
 def index():
-    return app.send_static_file('index.html')
+    return flask_app.send_static_file('index.html')
 
-# --- ЗАПУСК БОТА ПРИ ІМПОРТІ ФАЙЛУ ---
-# Цей код виконається, коли Gunicorn завантажить файл,п і запустить бота у фоновому потоці.
-logger.info("Запускаємо потік для Telegram-бота...")
-bot_thread = Thread(target=run_bot)
-bot_thread.start()
+
+# --- Головна функція для запуску всього разом ---
+async def main():
+    """Запускає веб-сервер Uvicorn та Telegram-бота разом."""
+    port = int(os.environ.get('PORT', 8080))
+
+    # Створюємо та налаштовуємо Uvicorn-сервер
+    config = uvicorn.Config(
+        "__main__:flask_app",
+        host="0.0.0.0",
+        port=port,
+        log_level="info"
+    )
+    server = uvicorn.Server(config)
+
+    # Запускаємо PTB Application та Uvicorn-сервер паралельно
+    await ptb_app.initialize()
+    await ptb_app.start()
+    await ptb_app.updater.start_polling()
+    await server.serve()
+    await ptb_app.updater.stop()
+    await ptb_app.stop()
+
+
+if __name__ == "__main__":
+    # Запускаємо головну async-функцію
+    asyncio.run(main())
