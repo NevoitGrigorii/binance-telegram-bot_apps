@@ -3,6 +3,7 @@ import logging
 import asyncio
 import uvicorn
 from flask import Flask
+from asgiref.wsgi import WsgiToAsgi  # <--- NEW IMPORT
 from telegram import Update, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, ContextTypes
 
@@ -35,12 +36,16 @@ ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
 ptb_app.add_handler(CommandHandler("start", start))
 
 # --- Flask частина для віддачі фронтенду ---
-flask_app = Flask(__name__, static_folder='frontend', static_url_path='')
+_flask_app = Flask(__name__, static_folder='frontend', static_url_path='')
 
 
-@flask_app.route('/')
+@_flask_app.route('/')
 def index():
-    return flask_app.send_static_file('index.html')
+    return _flask_app.send_static_file('index.html')
+
+
+# Wrap the Flask app in the ASGI translator
+flask_app = WsgiToAsgi(_flask_app)
 
 
 # --- Головна функція для запуску всього разом ---
@@ -53,7 +58,6 @@ async def main():
     )
     server = uvicorn.Server(config)
 
-    # Запускаємо PTB Application та Uvicorn-сервер паралельно
     await ptb_app.initialize()
     await ptb_app.start()
     await ptb_app.updater.start_polling()
