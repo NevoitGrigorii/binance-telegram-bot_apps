@@ -23,6 +23,7 @@ app = Flask(__name__, static_folder='frontend', static_url_path='')
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Надсилає кнопку для запуску Web App."""
 
+    # --- ОСНОВНЕ ВИПРАВЛЕННЯ ТУТ ---
     # Правильно створюємо об'єкт кнопки, як того вимагає бібліотека
     button = KeyboardButton(
         "📈 Відкрити інтерактивний графік",
@@ -32,7 +33,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Створюємо клавіатуру з одного ряду, що містить нашу кнопку
     keyboard = [[button]]
 
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)Я ---
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    # --- КІНЕЦЬ ВИПРАВЛЕННЯ ---
 
     await update.message.reply_text(
         "Привіт! Натисніть кнопку нижче, щоб відкрити інтерактивний графік криптовалют.",
