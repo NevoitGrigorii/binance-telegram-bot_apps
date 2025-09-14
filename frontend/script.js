@@ -77,24 +77,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 3. Головна функція для оновлення всього графіка
     async function updateChart(symbol, interval) {
-        currentSymbol = symbol;
+        console.log("Оновлюю графік:", symbol, interval);  // <--- Додай це
+        currentSymbol = symbol.toUpperCase();
         currentInterval = interval;
-        symbolInput.value = symbol;
+        symbolInput.value = symbol.toUpperCase();
 
         intervalButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.interval === interval);
         });
 
-        await loadInitialData(symbol, interval);
-        connectWebSocket(symbol, interval);
+        await loadInitialData(currentSymbol, currentInterval);
+        connectWebSocket(currentSymbol, currentInterval);
     }
+
 
     // --- Обробники подій ---
 
-    searchButton.addEventListener('click', () => updateChart(symbolInput.value, currentInterval));
-    symbolInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') updateChart(symbolInput.value, currentInterval);
+    searchButton.addEventListener('click', () => {
+        if (symbolInput.value.trim() !== '') {
+            updateChart(symbolInput.value.trim(), currentInterval);
+        } else {
+            alert("Введіть символ, наприклад: BTCUSDT");
+        }
     });
+
 
     intervalButtons.forEach(button => {
         button.addEventListener('click', () => {
