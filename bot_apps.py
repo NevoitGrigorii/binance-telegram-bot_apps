@@ -4,11 +4,10 @@ import nest_asyncio
 nest_asyncio.apply()  # дозволяє використовувати asyncio всередині Render
 
 import asyncio
+from threading import Thread
 import logging
 from flask import Flask, jsonify
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import uvicorn
-from asgiref.wsgi import WsgiToAsgi
 
 # ---------- Логи ----------
 logging.basicConfig(
@@ -22,6 +21,10 @@ flask_app = Flask(__name__)
 @flask_app.route('/')
 def index():
     return jsonify({"status": "ok", "message": "Bot server is running!"})
+
+def run_flask():
+    # daemon=True щоб не блокувати закриття програми
+    flask_app.run(host="0.0.0.0", port=8000, debug=False)
 
 # ---------- Telegram Bot ----------
 TELEGRAM_TOKEN = "YOUR_BOT_TOKEN"  # заміни на свій токен
@@ -40,23 +43,11 @@ async def run_telegram_bot():
 
 # ---------- Основний запуск ----------
 async def main():
-    # Flask через ASGI
-    flask_asgi_app = WsgiToAsgi(flask_app)
-    flask_task = asyncio.create_task(
-        uvicorn.run(
-            flask_asgi_app,
-            host="0.0.0.0",
-            port=8000,
-            reload=False,
-            log_level="info"
-        )
-    )
+    # Flask у окремому потоці
+    Thread(target=run_flask, daemon=True).start()
 
     # Telegram бот
-    bot_task = asyncio.create_task(run_telegram_bot())
-
-    # Обидва таски одночасно
-    await asyncio.gather(flask_task, bot_task)
+    await run_telegram_bot()
 
 if __name__ == "__main__":
     asyncio.run(main())
