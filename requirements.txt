@@ -3,3 +3,4 @@ uvicorn==0.23.2
 nest-asyncio==1.5.8
 python-telegram-bot==23.16.3
 httpx==1.6.3
+gunicorn==22.3.1

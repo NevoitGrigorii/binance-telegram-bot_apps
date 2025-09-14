@@ -4,11 +4,13 @@ import nest_asyncio
 nest_asyncio.apply()  # дозволяє використовувати asyncio всередині Render
 
 import asyncio
+import logging
 from flask import Flask, jsonify
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import logging
+import uvicorn
+from asgiref.wsgi import WsgiToAsgi
 
-# ---------- Налаштування логів ----------
+# ---------- Логи ----------
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -37,26 +39,24 @@ async def run_telegram_bot():
     await app.run_polling()
 
 # ---------- Основний запуск ----------
-def main():
-    # Запускаємо Flask у окремому таску
-    loop = asyncio.get_event_loop()
-
-    # Flask через Uvicorn
-    import uvicorn
-    flask_task = loop.create_task(
+async def main():
+    # Flask через ASGI
+    flask_asgi_app = WsgiToAsgi(flask_app)
+    flask_task = asyncio.create_task(
         uvicorn.run(
-            "bot_apps:flask_app",
+            flask_asgi_app,
             host="0.0.0.0",
             port=8000,
-            reload=False  # на Render не треба reload=True
+            reload=False,
+            log_level="info"
         )
     )
 
-    # Telegram Bot у асинхронному таску
-    bot_task = loop.create_task(run_telegram_bot())
+    # Telegram бот
+    bot_task = asyncio.create_task(run_telegram_bot())
 
-    # Запускаємо обидва таски
-    loop.run_until_complete(asyncio.gather(flask_task, bot_task))
+    # Обидва таски одночасно
+    await asyncio.gather(flask_task, bot_task)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
